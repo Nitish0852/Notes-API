@@ -12,49 +12,102 @@ NOTES = {
 
 
 def abort_if_note_doesnt_exist(note_id):
+    """Abort request if note_id does not exist in NOTES"""
     if note_id not in NOTES:
         abort(404, message="Note {} doesn't exist".format(note_id))
 
-parser = reqparse.RequestParser()
-parser.add_argument('title',location='form')
-parser.add_argument('content', location='form')
 
-# DELETE
-# shows a single note item and lets you delete a note item
-class MyNote(Resource):
+# argument parsing
+parser = reqparse.RequestParser()
+parser.add_argument('task')
+
+
+# Note
+# shows a single note item and lets you updatae or delete a note item
+class Note(Resource):
     def get(self, note_id):
-        abort_if_todo_doesnt_exist(note_id)
+        """Return the specified note item given the note_id
+        Example:
+            # In the terminal
+            $ curl http://localhost:5000/notes/note1
+            OR
+            # Python
+            requests.get('http://localhost:5000/notes/note1').json()
+        """
+        abort_if_note_doesnt_exist(note_id)
         return NOTES[note_id]
 
     def delete(self, note_id):
-        abort_if_todo_doesnt_exist(note_id)
+        """Deletes an existing task
+        Example:
+            # In the terminal
+            $ curl http://localhost:5000/notes/note1 -X DELETE -v
+            OR
+            # Python
+            requests.delete('http://localhost:5000/notes/note4')
+        """
+        abort_if_note_doesnt_exist(note_id)
         del NOTES[note_id]
+        # 204: SUCCESS; NO FURTHER CONTENT
         return '', 204
 
     def put(self, note_id):
-        args = parser.parse_args()
-        note = {'title': args['title'], 'content':args['content']}
-        NOTES[note_id] = note
-        return note, 201
+        """Updates existing task
+        Example:
+            # In the terminal
+            $ curl http://localhost:5000/notes/note1 -d "task=Remember the milk" -X PUT -v
+            OR
+            # Python
+            requests.put('http://localhost:5000/notes/note1',
+                         data={'task': 'Remember the milk'}).json()
+        """
 
-# POST
-# shows a list of all NOTES, and lets you POST to add 
-class MyNotebook(Resource):
+        # parser
+        abort_if_note_doesnt_exist(note_id)
+        args = parser.parse_args()
+        task = {'task': args['task']}
+        NOTES[note_id] = task
+        # 201: CREATED
+        return task, 201
+
+
+# NoteList
+# shows a list of all notes, and lets you POST to add new tasks
+class NoteList(Resource):
     def get(self):
+        """Return the current NOTE dictionary
+        Example:
+            # In the terminal
+            $ curl http://localhost:5000/notes
+            OR
+            # Python
+            requests.get('http://localhost:5000/notes').json()
+        """
         return NOTES
 
     def post(self):
+        """Adds task to NOTE
+        Example:
+            # In the terminal
+            $ curl http://localhost:5000/notes -d "task=Remember the milk" -X POST -v
+            OR
+            # Python
+            requests.post('http://localhost:5000/notes',
+                         data={'task': 'Remember the milk'}).json()
+        """
         args = parser.parse_args()
         note_id = int(max(NOTES.keys()).lstrip('note')) + 1
         note_id = 'note%i' % note_id
-        
-        NOTES[note_id] = {'title': args['title'], 'content':args['content']}
+        NOTES[note_id] = {'task': args['task']}
+        # 201: CREATED
         return NOTES[note_id], 201
 
 
-# API Resource routing
-api.add_resource(MyNotebook, '/mynotebook')
-api.add_resource(MyNote, '/mynotebook/<note_id>')
+# Setup the Api resource routing here
+# Route the URL to the resource
+api.add_resource(NoteList, '/notes')
+api.add_resource(Note, '/notes/<note_id>')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
